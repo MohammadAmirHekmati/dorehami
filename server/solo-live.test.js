@@ -4,7 +4,7 @@ import {hint,move} from '../shared/solo-engine.js';
 import {points} from '../shared/solo-score.js';
 const base=process.env.TEST_BASE_URL||'http://127.0.0.1:3002';
 const call=async(path,token,body)=>{const r=await fetch(base+path,{method:body?'POST':'GET',headers:{'Content-Type':'application/json',...(token?{Authorization:'Bearer '+token}:{})},...(body?{body:JSON.stringify(body)}:{})});return {status:r.status,data:await r.json()};};
-const name='score-test-'+Date.now(),password=randomBytes(16).toString('hex');
+const name='st-'+Date.now(),password=randomBytes(16).toString('hex');
 const first=await call('/api/auth',null,{mode:'register',name,password});assert.equal(first.status,200);
 const second=await call('/api/auth',null,{mode:'login',name,password});assert.equal(second.status,200);assert.notEqual(first.data.token,second.data.token);
 const other=await call('/api/auth',null,{mode:'register',name:name+'-b',password});assert.equal(other.status,200);

@@ -5,3 +5,4 @@
 !dist/**
 !Dockerfile
 server/*.test.js
+!shared/**

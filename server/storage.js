@@ -8,9 +8,13 @@ export async function openStorage() {
     await pool.query(`CREATE TABLE IF NOT EXISTS users (id TEXT PRIMARY KEY, name TEXT UNIQUE NOT NULL, password TEXT NOT NULL);
       CREATE TABLE IF NOT EXISTS sessions (token TEXT PRIMARY KEY, user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE, expires BIGINT NOT NULL);
       CREATE INDEX IF NOT EXISTS sessions_expires_idx ON sessions(expires);
-      CREATE TABLE IF NOT EXISTS game_rooms (code TEXT PRIMARY KEY, snapshot JSONB NOT NULL, updated_at TIMESTAMPTZ NOT NULL DEFAULT now());`);
+      CREATE TABLE IF NOT EXISTS solo_runs (id TEXT PRIMARY KEY,user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,kind TEXT NOT NULL,initial JSONB NOT NULL,score INTEGER,moves INTEGER,won BOOLEAN,created_at TIMESTAMPTZ NOT NULL DEFAULT now()); CREATE INDEX IF NOT EXISTS solo_runs_user_idx ON solo_runs(user_id,kind); CREATE TABLE IF NOT EXISTS game_rooms (code TEXT PRIMARY KEY, snapshot JSONB NOT NULL, updated_at TIMESTAMPTZ NOT NULL DEFAULT now());`);
     return {
       kind: 'postgres',
+      createSoloRun: async(id,user,kind,initial)=>{await pool.query('INSERT INTO solo_runs(id,user_id,kind,initial) VALUES($1,$2,$3,$4)',[id,user,kind,JSON.stringify(initial)]);},
+      getSoloRun: async(id,user)=>(await pool.query('SELECT * FROM solo_runs WHERE id=$1 AND user_id=$2',[id,user])).rows[0],
+      finishSoloRun: async(id,user,r)=>{await pool.query('UPDATE solo_runs SET score=$3,moves=$4,won=$5 WHERE id=$1 AND user_id=$2 AND score IS NULL',[id,user,r.score,r.moves,r.won]);},
+      soloRecords: async(user)=>(await pool.query('SELECT kind,MAX(score)::int AS best_score,COUNT(*)::int AS games,COUNT(*) FILTER (WHERE won)::int AS wins,MIN(moves) FILTER (WHERE won)::int AS best_moves FROM solo_runs WHERE user_id=$1 AND score IS NOT NULL GROUP BY kind',[user])).rows,
       findUser: async name => (await pool.query('SELECT * FROM users WHERE name=$1', [name])).rows[0],
       createUser: async u => { await pool.query('INSERT INTO users(id,name,password) VALUES($1,$2,$3)', [u.id,u.name,u.password]); },
       createSession: async (token,id,expires) => { await pool.query('INSERT INTO sessions VALUES($1,$2,$3)', [hash(token),id,expires]); },
@@ -28,9 +32,13 @@ export async function openStorage() {
   const { mkdirSync } = await import('node:fs');
   mkdirSync('data', { recursive: true });
   const db = new DatabaseSync('data/club.sqlite');
-  db.exec('CREATE TABLE IF NOT EXISTS users(id TEXT PRIMARY KEY,name TEXT UNIQUE,password TEXT); CREATE TABLE IF NOT EXISTS sessions(token TEXT PRIMARY KEY,userId TEXT,expires INTEGER); CREATE TABLE IF NOT EXISTS game_rooms(code TEXT PRIMARY KEY,snapshot TEXT)');
+  db.exec('CREATE TABLE IF NOT EXISTS users(id TEXT PRIMARY KEY,name TEXT UNIQUE,password TEXT); CREATE TABLE IF NOT EXISTS sessions(token TEXT PRIMARY KEY,userId TEXT,expires INTEGER); CREATE TABLE IF NOT EXISTS game_rooms(code TEXT PRIMARY KEY,snapshot TEXT); CREATE TABLE IF NOT EXISTS solo_runs(id TEXT PRIMARY KEY,user_id TEXT,kind TEXT,initial TEXT,score INTEGER,moves INTEGER,won INTEGER)');
   return {
     kind: 'sqlite-local',
+    createSoloRun: async(id,user,kind,initial)=>{db.prepare('INSERT INTO solo_runs(id,user_id,kind,initial) VALUES(?,?,?,?)').run(id,user,kind,JSON.stringify(initial));},
+    getSoloRun: async(id,user)=>db.prepare('SELECT * FROM solo_runs WHERE id=? AND user_id=?').get(id,user),
+    finishSoloRun: async(id,user,r)=>{db.prepare('UPDATE solo_runs SET score=?,moves=?,won=? WHERE id=? AND user_id=? AND score IS NULL').run(r.score,r.moves,r.won?1:0,id,user);},
+    soloRecords: async(user)=>db.prepare('SELECT kind,MAX(score) AS best_score,COUNT(*) AS games,SUM(won) AS wins,MIN(CASE WHEN won=1 THEN moves END) AS best_moves FROM solo_runs WHERE user_id=? AND score IS NOT NULL GROUP BY kind').all(user),
     findUser: async name => db.prepare('SELECT * FROM users WHERE name=?').get(name),
     createUser: async u => { db.prepare('INSERT INTO users VALUES(?,?,?)').run(u.id,u.name,u.password); },
     createSession: async (token,id,expires) => { db.prepare('INSERT INTO sessions VALUES(?,?,?)').run(hash(token),id,expires); },

@@ -57,3 +57,11 @@ The sidebar separates multiplayer and single-player games. Klondike Solitaire us
 Both games include touch-first card selection, undo (last 40 moves in the current visit), hints, restart confirmation and automatic progress saving in this browser. No signup is required. Progress is device-local, not synced to PostgreSQL or other devices. Random deals are not guaranteed solvable. No currency or ranking rewards are awarded. Once the PWA assets are cached, the games run without server requests.
 
 سولیتر و هرم از بخش تک‌نفره در دسترس‌اند. پیشرفت روی همین دستگاه ذخیره می‌شود. برای انتقال کارت، ابتدا کارت و سپس مقصد را لمس کنید؛ کشیدن کارت لازم نیست. برگشت حرکت، پیشنهاد حرکت و قوانین داخل هر بازی وجود دارد.
+
+## Account-backed solo scores
+
+Signed-in players can start a ranked hand with a server-issued deal. Finalized results are stored in PostgreSQL and the personal records panel loads them on any device signed into that account. Guest and older local-only hands remain practice hands. Active hand progress is still device-local and scoped to the account; only finalized scores sync.
+
+Scoring: 10 points per card currently on a Klondike foundation or removed from the pyramid, plus 500 for a win, minus 2 per move, 10 per hint and 5 per undo, floored at zero. A win submits automatically; players can also finalize an unfinished hand with confirmation. Finalized hands cannot be changed. The server replays up to 2,000 events against its saved initial deal and calculates the score itself. Updates are conditional and idempotent, so retries cannot count a hand twice. A failed upload can be retried without discarding the saved hand.
+
+Records include best score, finalized hand count, win count and fewest moves in a win. These are personal records, not spendable currency or competitive anti-cheat guarantees. Local storage remains a convenience and does not establish a trusted score.

@@ -2,9 +2,9 @@
 
 **A Persian multiplayer card club — یک دست، هزار خاطره.**
 
-Online Crazy Sevens and simplified Blackjack with private rooms, invitation links, computer opponents, reconnect support and an installable PWA. Built with React, Vite, Node.js, Express, Socket.IO and PostgreSQL.
+Online two-, three- and four-player Hokm, Crazy Sevens and simplified Blackjack, plus solo Solitaire and Pyramid. Private rooms, invitation links, computer opponents, reconnect support and an installable PWA. Built with React, Vite, Node.js, Express, Socket.IO and PostgreSQL.
 
-بازی آنلاین **هفت خبیث** و **۲۱** با رابط فارسی، روم خصوصی، دعوت دوستان، ربات و امکان نصب PWA. بازی‌ها صرفاً برای سرگرمی هستند و شرط‌بندی یا پول واقعی ندارند.
+بازی آنلاین **حکم ۲، ۳ و ۴ نفره، هفت خبیث و ۲۱** و بازی‌های تک‌نفرهٔ سولیتر و هرم، با رابط فارسی، روم خصوصی، دعوت دوستان، ربات و امکان نصب PWA. بازی‌ها صرفاً برای سرگرمی هستند و شرط‌بندی یا پول واقعی ندارند.
 
 ## Local development | اجرای محلی
 
@@ -65,3 +65,11 @@ Signed-in players start a ranked hand with a server-issued deal. Finalized resul
 Scoring: 10 points per card currently on a Klondike foundation or removed from the pyramid, plus 500 for a win, minus 2 per move, 10 per hint and 5 per undo, floored at zero. A win submits automatically; players can also finalize an unfinished hand with confirmation. Finalized hands cannot be changed. The server replays up to 2,000 events against its saved initial deal and calculates the score itself. Updates are conditional and idempotent, so retries cannot count a hand twice. A failed upload can be retried without discarding the saved hand.
 
 Records include best score, finalized hand count, win count and fewest moves in a win. These are personal records, not spendable currency or competitive anti-cheat guarantees. Local storage remains a convenience and does not establish a trusted score.
+
+## Hokm | حکم
+
+Three distinct room types require exactly 2, 3 or 4 seats. Servers use cryptographic Fisher–Yates shuffling and a random cut. The initial ruler and four-player partner are selected by a public ace lottery followed by a fresh shuffle. Partners sit opposite and turns move counterclockwise. All phases, legal cards, winners and match scores are server-authoritative. Hands, stock and discards remain private; a two-player draw preview is visible only to its owner. Timeout actions and practice bots use only their own cards and public state. Room snapshots, including selection phases, are persisted by the existing PostgreSQL room storage.
+
+The rule descriptions in the in-app rules panel identify the supported variants and link to [Pagat](https://www.pagat.com/whist/hokm.html) and [Ali Jahanshiri](https://www.jahanshiri.ir/cardgames/en/hokm). Three-player Hokm removes the two of clubs. Two-player Hokm uses the fixed three-card ruler discard and two-card opponent discard variant. Match points belong to the current room; no currency or wager is involved. Leaving cancels the current hand; a new match resets room scores.
+
+Validation: `npm test` covers shuffle/deal integrity, hidden cards, compulsory suit following, trick ordering, kot scoring, three-player ties, full matches and JSON snapshot restoration. `node server/hokm-live.test.js` tests authenticated Socket.IO clients on port 3003; set `TEST_BASE_URL` to test another deployment. It creates disposable test accounts and removes its own test rooms when complete.

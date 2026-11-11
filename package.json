@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "node server/index.js",
     "build": "vite build",
-    "test": "node --test server/game.test.js server/solo.test.js src/solo/engine.test.js",
+    "test": "node --test server/game.test.js server/solo.test.js src/solo/engine.test.js server/hokm.test.js",
     "start": "node server/index.js --production"
   },
   "dependencies": {

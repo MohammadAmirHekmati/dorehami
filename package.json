@@ -1,0 +1,27 @@
+{
+  "name": "card-club",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "node server/index.js",
+    "build": "vite build",
+    "test": "node --test server/game.test.js",
+    "start": "node server/index.js --production"
+  },
+  "dependencies": {
+    "express": "5.1.0",
+    "pg": "8.16.3",
+    "socket.io": "4.8.1"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "4.4.1",
+    "typescript": "5.8.3",
+    "vite": "6.3.5",
+    "vite-plugin-pwa": "1.0.0",
+    "react": "19.1.0",
+    "react-dom": "19.1.0",
+    "lucide-react": "0.468.0",
+    "socket.io-client": "4.8.1"
+  }
+}

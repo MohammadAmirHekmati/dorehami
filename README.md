@@ -49,3 +49,11 @@ Seven: match rank or suit. Seven stacks a two-card penalty, eight repeats a turn
 Blackjack: each player faces an automated dealer. Aces count as 1 or 11, face cards as 10. Dealer stands on all 17s. No wagers, split, double or special natural payout. A timeout stands automatically.
 
 قوانین کامل داخل برنامه قابل مشاهده است. خروج از روم در طول بازی دست جاری را لغو می‌کند. نصب PWA روی موبایل نیازمند HTTPS است.
+
+## Single-player | بازی‌های تک‌نفره
+
+The sidebar separates multiplayer and single-player games. Klondike Solitaire uses draw-one with unlimited stock recycling, alternating descending tableau sequences, and same-suit foundations from ace to king. Pyramid removes exposed pairs totaling 13; kings are removed alone and the stock can be recycled once. Clearing all 28 pyramid cards wins.
+
+Both games include touch-first card selection, undo (last 40 moves in the current visit), hints, restart confirmation and automatic progress saving in this browser. No signup is required. Progress is device-local, not synced to PostgreSQL or other devices. Random deals are not guaranteed solvable. No currency or ranking rewards are awarded. Once the PWA assets are cached, the games run without server requests.
+
+سولیتر و هرم از بخش تک‌نفره در دسترس‌اند. پیشرفت روی همین دستگاه ذخیره می‌شود. برای انتقال کارت، ابتدا کارت و سپس مقصد را لمس کنید؛ کشیدن کارت لازم نیست. برگشت حرکت، پیشنهاد حرکت و قوانین داخل هر بازی وجود دارد.

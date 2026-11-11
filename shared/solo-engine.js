@@ -73,7 +73,7 @@ export function move(state,action) {
   next.won=next.kind==='pyramid'?next.pyramid.every(c=>!c):next.foundations.every(p=>p.length===13);
   return next;
 }
-export function hint(state) {
+function immediateHint(state) {
   if(state.won)return null;
   if(state.kind==='pyramid') {
     const refs=state.pyramid.flatMap((c,i)=>exposed(state,i)?[{zone:'pyramid',index:i}]:[]);
@@ -87,9 +87,29 @@ export function hint(state) {
     if(state.waste.length)refs.unshift({zone:'waste'});
     for(const from of refs)for(let pile=0;pile<4;pile++){const a={type:'move',from,to:{zone:'foundation',pile}};if(move(state,a))return a;}
     for(const from of refs)for(let pile=0;pile<7;pile++) {
-      if(from.zone==='column'&&from.index===0&&!state.columns[pile].length)continue;
+      // Moving an exposed sequence between equivalent columns adds no progress.
+      // Only recommend it when it uncovers a card or frees a foundation-ready card.
+      if(from.zone==='column'){
+        const below=state.columns[from.pile][from.index-1];
+        if(!below)continue;
+        if(below.up&&below.r!==state.foundations[SUITS.indexOf(below.s)].length+1)continue;
+      }
       const a={type:'move',from,to:{zone:'column',pile}};if(move(state,a))return a;
     }
   }
-  return move(state,{type:'draw'})?{type:'draw'}:null;
+  return null;
+}
+export function hint(input){
+  // UI metadata can contain thousands of recorded actions; keep lookahead bounded.
+  const {record,metrics,...state}=input;
+  const direct=immediateHint(state);if(direct)return direct;
+  let next=state;
+  const seen=new Set();
+  for(let i=0;i<2*(state.stock.length+state.waste.length)+2;i++){
+    next=move(next,{type:'draw'});if(!next)return null;
+    const key=JSON.stringify([next.stock.map(c=>c.id),next.waste.map(c=>c.id)]);
+    if(seen.has(key))return null;seen.add(key);
+    if(immediateHint(next))return {type:'draw'};
+  }
+  return null;
 }

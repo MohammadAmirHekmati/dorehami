@@ -9,7 +9,12 @@ export async function openStorage() {
       CREATE TABLE IF NOT EXISTS sessions (token TEXT PRIMARY KEY, user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE, expires BIGINT NOT NULL);
       CREATE INDEX IF NOT EXISTS sessions_expires_idx ON sessions(expires);
       CREATE TABLE IF NOT EXISTS solo_runs (id TEXT PRIMARY KEY,user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,kind TEXT NOT NULL,initial JSONB NOT NULL,score INTEGER,moves INTEGER,won BOOLEAN,created_at TIMESTAMPTZ NOT NULL DEFAULT now()); CREATE INDEX IF NOT EXISTS solo_runs_user_idx ON solo_runs(user_id,kind); CREATE TABLE IF NOT EXISTS game_rooms (code TEXT PRIMARY KEY, snapshot JSONB NOT NULL, updated_at TIMESTAMPTZ NOT NULL DEFAULT now());`);
+    await pool.query('CREATE TABLE IF NOT EXISTS solo_progress(user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,kind TEXT NOT NULL,revision TEXT NOT NULL,document JSONB NOT NULL,PRIMARY KEY(user_id,kind))');
     return {
+      getProgress: async(user,kind)=>(await pool.query('SELECT revision,document FROM solo_progress WHERE user_id=$1 AND kind=$2',[user,kind])).rows[0],
+      saveProgress: async(user,kind,expected,revision,document)=> expected===null
+        ? (await pool.query('INSERT INTO solo_progress(user_id,kind,revision,document) VALUES($1,$2,$3,$4) ON CONFLICT DO NOTHING',[user,kind,revision,JSON.stringify(document)])).rowCount===1
+        : (await pool.query('UPDATE solo_progress SET revision=$4,document=$5 WHERE user_id=$1 AND kind=$2 AND revision=$3',[user,kind,expected,revision,JSON.stringify(document)])).rowCount===1,
       kind: 'postgres',
       createSoloRun: async(id,user,kind,initial)=>{await pool.query('INSERT INTO solo_runs(id,user_id,kind,initial) VALUES($1,$2,$3,$4)',[id,user,kind,JSON.stringify(initial)]);},
       getSoloRun: async(id,user)=>(await pool.query('SELECT * FROM solo_runs WHERE id=$1 AND user_id=$2',[id,user])).rows[0],
@@ -33,7 +38,12 @@ export async function openStorage() {
   mkdirSync('data', { recursive: true });
   const db = new DatabaseSync('data/club.sqlite');
   db.exec('CREATE TABLE IF NOT EXISTS users(id TEXT PRIMARY KEY,name TEXT UNIQUE,password TEXT); CREATE TABLE IF NOT EXISTS sessions(token TEXT PRIMARY KEY,userId TEXT,expires INTEGER); CREATE TABLE IF NOT EXISTS game_rooms(code TEXT PRIMARY KEY,snapshot TEXT); CREATE TABLE IF NOT EXISTS solo_runs(id TEXT PRIMARY KEY,user_id TEXT,kind TEXT,initial TEXT,score INTEGER,moves INTEGER,won INTEGER)');
+  db.exec('CREATE TABLE IF NOT EXISTS solo_progress(user_id TEXT NOT NULL,kind TEXT NOT NULL,revision TEXT NOT NULL,document TEXT NOT NULL,PRIMARY KEY(user_id,kind))');
   return {
+    getProgress: async(user,kind)=>{const row=db.prepare('SELECT revision,document FROM solo_progress WHERE user_id=? AND kind=?').get(user,kind);return row?{...row,document:JSON.parse(row.document)}:undefined;},
+    saveProgress: async(user,kind,expected,revision,document)=>expected===null
+      ? db.prepare('INSERT OR IGNORE INTO solo_progress VALUES(?,?,?,?)').run(user,kind,revision,JSON.stringify(document)).changes===1
+      : db.prepare('UPDATE solo_progress SET revision=?,document=? WHERE user_id=? AND kind=? AND revision=?').run(revision,JSON.stringify(document),user,kind,expected).changes===1,
     kind: 'sqlite-local',
     createSoloRun: async(id,user,kind,initial)=>{db.prepare('INSERT INTO solo_runs(id,user_id,kind,initial) VALUES(?,?,?,?)').run(id,user,kind,JSON.stringify(initial));},
     getSoloRun: async(id,user)=>db.prepare('SELECT * FROM solo_runs WHERE id=? AND user_id=?').get(id,user),

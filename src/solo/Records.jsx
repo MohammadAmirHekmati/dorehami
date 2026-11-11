@@ -1,5 +1,5 @@
 import React,{useEffect,useState} from 'react';
-export async function soloApi(token,path,body){const r=await fetch('/api/solo/'+path,{method:body?'POST':'GET',headers:{Authorization:'Bearer '+token,...(body?{'Content-Type':'application/json'}:{})},...(body?{body:JSON.stringify(body)}:{})});const data=await r.json();if(!r.ok)throw Error(data.error||'ارتباط برقرار نشد');return data;}
+export async function soloApi(token,path,body){const r=await fetch('/api/solo/'+path,{method:body?'POST':'GET',headers:{Authorization:'Bearer '+token,...(body?{'Content-Type':'application/json'}:{})},...(body?{body:JSON.stringify(body)}:{})});const data=await r.json();if(!r.ok){const e=Error(data.error||'ارتباط برقرار نشد');e.status=r.status;throw e;}return data;}
 export default function Records({token,refresh=0}){
  const [rows,setRows]=useState(null),[error,setError]=useState(''),[retry,setRetry]=useState(0);
  useEffect(()=>{let alive=true;setRows(null);setError('');if(token)soloApi(token,'records').then(d=>{if(alive)setRows(d.records)}).catch(e=>{if(alive)setError(e.message)});return()=>{alive=false}},[token,refresh,retry]);

@@ -1,14 +1,16 @@
 import {randomBytes} from 'node:crypto';
 import {createGame} from '../shared/solo-engine.js';
 import {replay} from '../shared/solo-score.js';
+import {installProgress} from './solo-progress.js';
 export function installSolo(app,storage){
   const limits=new Map();
   setInterval(()=>limits.clear(),60000).unref();
   app.use('/api/solo',async(req,res,next)=>{
     try{const user=await storage.userFromToken(req.headers.authorization?.replace('Bearer ',''));if(!user)return res.status(401).json({error:'برای ثبت رکورد وارد حساب شوید'});
-      const count=(limits.get(user.id)||0)+1;limits.set(user.id,count);if(count>40)return res.status(429).json({error:'کمی صبر کنید'});req.user=user;next();
+      const count=(limits.get(user.id)||0)+1;limits.set(user.id,count);if(count>180)return res.status(429).json({error:'کمی صبر کنید'});req.user=user;next();
     }catch{res.status(503).json({error:'ارتباط با دیتابیس برقرار نشد'});}
   });
+  installProgress(app,storage);
   app.get('/api/solo/records',async(req,res)=>{try{res.json({records:await storage.soloRecords(req.user.id)});}catch{res.status(503).json({error:'دریافت رکوردها ممکن نشد'});}});
   app.post('/api/solo/runs',async(req,res)=>{try{
     if(!['solitaire','pyramid'].includes(req.body.kind))return res.status(400).json({error:'بازی نامعتبر است'});
@@ -18,6 +20,8 @@ export function installSolo(app,storage){
   }catch{res.status(503).json({error:'شروع دست رکوردی ممکن نشد'});}});
   app.post('/api/solo/runs/:id/finish',async(req,res)=>{
     try{const run=await storage.getSoloRun(req.params.id,req.user.id);if(!run)return res.status(404).json({error:'دست بازی پیدا نشد'});
+      const progress=await storage.getProgress(req.user.id,run.kind);
+      if(progress?.document.id===run.id)return res.status(409).json({error:'این دست به حساب متصل است؛ صفحه را به‌روز کن.'});
       if(run.score===null){let result;try{result=replay(typeof run.initial==='string'?JSON.parse(run.initial):run.initial,req.body.events);}catch{return res.status(400).json({error:'تاریخچهٔ حرکت‌ها معتبر نیست'});}
         await storage.finishSoloRun(run.id,req.user.id,result);
       }

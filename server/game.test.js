@@ -2,6 +2,13 @@ import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {deck,score,start,act,view,legal} from './game.js';
 const make=(game='seven')=>({game,players:[{id:'a',name:'A'},{id:'b',name:'B'}]});
+test('two to four player deals and redeals preserve a complete shuffled deck',()=>{
+ const orders=new Set();for(const game of ['seven','blackjack'])for(let count=2;count<=4;count++)for(let trial=0;trial<30;trial++){
+ const r={game,players:Array.from({length:count},(_,i)=>({id:String(i),name:String(i)}))};start(r);start(r);
+ assert.ok(r.players.every(p=>p.hand.length===(game==='seven'?7:2)));
+ const cards=[...r.deck,...r.discard,...r.dealer,...r.players.flatMap(p=>p.hand)];assert.equal(cards.length,52);assert.equal(new Set(cards.map(c=>c.id)).size,52);orders.add(cards.map(c=>c.id).join(','));
+ }assert.ok(orders.size>170);
+});
 test('deck is 52 unique cards',()=>assert.equal(new Set(deck().map(c=>c.id)).size,52));
 test('aces are reduced without busting',()=>{assert.equal(score([{r:1},{r:1},{r:9}]),21);assert.equal(score([{r:1},{r:13},{r:7}]),18)});
 test('private views never expose opponent hand or deck',()=>{const r=make();start(r);const v=view(r,'a');assert.equal(v.players[0].hand.length,7);assert.equal(v.players[1].hand,undefined);assert.equal(v.deck,undefined);assert.throws(()=>act(r,'b',{type:'draw'}))});

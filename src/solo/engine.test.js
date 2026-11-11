@@ -3,6 +3,24 @@ import assert from 'node:assert/strict';
 import {createGame,shuffledDeck,move,exposed,hint} from './engine.js';
 const card=(r,s='♠',up=true)=>({id:s+r,r,s,up});
 const empty=()=>({...createGame('solitaire'),stock:[],waste:[],columns:Array.from({length:7},()=>[]),foundations:Array.from({length:4},()=>[])});
+test('hint does not bounce the screenshot sequence between equivalent red fours',()=>{
+ const s=empty();s.columns[0]=[card(6,'♥'),card(5,'♣'),card(4,'♥')];s.columns[1]=[card(6,'♦'),card(5),card(4,'♦'),card(3),card(2,'♥')];
+ s.stock=[card(9)];assert.equal(hint(s),null);
+ const manual=move(s,{type:'move',from:{zone:'column',pile:1,index:3},to:{zone:'column',pile:0}});
+ assert.ok(manual);assert.equal(hint(manual),null);
+});
+test('hint scans the entire stock before recommending draw and stops an unproductive cycle',()=>{
+ const s=empty();s.stock=[card(1),card(9),card(8)];assert.deepEqual(hint(s),{type:'draw'});
+ const blocked=empty();blocked.stock=[card(9),card(8)];assert.equal(hint(blocked),null);
+ let n=blocked;for(let i=0;i<12;i++)n=move(n,{type:'draw'});assert.equal(hint(n),null);
+});
+test('hint still reveals covered cards and frees cards ready for foundations',()=>{
+ const s=empty();s.columns[0]=[card(8,'♣',false),card(3),card(2,'♥')];s.columns[1]=[card(4,'♦')];assert.equal(hint(s).from.index,1);
+ s.columns[0][0]=card(1,'♣');assert.equal(hint(s).from.index,1);
+});
+test('repeated shuffles and both deals preserve every rank and suit exactly once',()=>{
+ const orders=new Set();for(let i=0;i<100;i++){const deck=shuffledDeck();orders.add(deck.map(c=>c.id).join(','));for(const kind of ['solitaire','pyramid']){const s=createGame(kind,deck),cards=[...s.stock,...s.columns.flat(),...s.pyramid];assert.equal(cards.length,52);assert.equal(new Set(cards.map(c=>c.id)).size,52);for(const suit of ['♠','♥','♦','♣'])assert.deepEqual(cards.filter(c=>c.s===suit).map(c=>c.r).sort((a,b)=>a-b),Array.from({length:13},(_,j)=>j+1));}}assert.ok(orders.size>95);
+});
 test('deals 52 distinct cards and exposes only tableau tops',()=>{const s=createGame('solitaire');assert.equal(s.stock.length,24);assert.deepEqual(s.columns.map(p=>p.length),[1,2,3,4,5,6,7]);assert.ok(s.columns.every(p=>p.filter(c=>c.up).length===1));assert.equal(new Set(shuffledDeck().map(c=>c.id)).size,52);});
 test('draw and recycle preserve order and do not mutate input',()=>{const s=empty();s.stock=[card(1),card(2)];const a=move(s,{type:'draw'}),b=move(a,{type:'draw'}),c=move(b,{type:'draw'});assert.equal(s.stock.length,2);assert.deepEqual(c.stock,s.stock);assert.equal(move(c,{type:'draw'}).waste[0].r,2)});
 test('tableau requires alternating colors and descending ranks',()=>{const s=empty();s.columns[0]=[card(8,'♥')];s.waste=[card(7)];const a={type:'move',from:{zone:'waste'},to:{zone:'column',pile:0}};assert.equal(move(s,a).columns[0].length,2);s.waste=[card(7,'♦')];assert.equal(move(s,a),null);s.waste=[card(6)];assert.equal(move(s,a),null)});
